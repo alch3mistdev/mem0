@@ -69,7 +69,7 @@ USER=<user-id> # The User Id you want to associate the memories with
 
 - #### LLM Configuration (optional)
 
-By default, OpenMemory uses OpenAI (`gpt-4o-mini`) for the LLM and embedder. You can configure a different provider using these environment variables in `/api/.env`:
+If unset, `LLM_PROVIDER` defaults to OpenAI (`gpt-4o-mini`) and the embedder defaults to OpenAI embeddings unless your LLM is Ollama (then the embedder defaults follow Ollama). Configure providers using these variables in `/api/.env` (they also seed the Settings UI on first run):
 
 | Variable | Description | Default |
 |---|---|---|
@@ -82,6 +82,8 @@ By default, OpenMemory uses OpenAI (`gpt-4o-mini`) for the LLM and embedder. You
 | `EMBEDDER_MODEL` | Model name for the embedder | `text-embedding-3-small` (OpenAI) / `nomic-embed-text` (Ollama) |
 | `EMBEDDER_API_KEY` | API key for the embedder provider | `OPENAI_API_KEY` env var |
 | `EMBEDDER_BASE_URL` | Custom base URL for the embedder API | Provider default |
+
+**Settings UI and database:** The web UI reads and writes the same JSON document the API stores in the app database (`configs` row `main`). On first start (or reset), that document is **seeded from your current environment** (`LLM_*`, vector-store env vars, etc.) so it matches what the Mem0 runtime uses. After you save changes in the UI, the database copy overrides env for those fields until you change them again. Use **Reset** in Settings (or `POST /api/v1/config/reset`) to re-seed from the current environment.
 
 #### Memory categorization (optional overrides)
 

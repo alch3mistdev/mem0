@@ -1,8 +1,9 @@
+import copy
 from typing import Any, Dict, Optional
 
 from app.database import get_db
 from app.models import Config as ConfigModel
-from app.utils.memory import reset_memory_client
+from app.utils.memory import get_api_default_configuration, reset_memory_client
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -47,75 +48,53 @@ class ConfigSchema(BaseModel):
     mem0: Optional[Mem0Config] = None
 
 def get_default_configuration():
-    """Get the default configuration with sensible defaults for LLM and embedder."""
-    return {
-        "openmemory": {
-            "custom_instructions": None
-        },
-        "mem0": {
-            "llm": {
-                "provider": "openai",
-                "config": {
-                    "model": "gpt-4o-mini",
-                    "temperature": 0.1,
-                    "max_tokens": 2000,
-                    "api_key": "env:OPENAI_API_KEY"
-                }
-            },
-            "embedder": {
-                "provider": "openai",
-                "config": {
-                    "model": "text-embedding-3-small",
-                    "api_key": "env:OPENAI_API_KEY"
-                }
-            },
-            "vector_store": None
-        }
-    }
+    """Env-driven defaults — must match get_default_memory_config() for Mem0 runtime."""
+    return get_api_default_configuration()
+
+
+def _merge_config_with_env_defaults(config_value: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill missing top-level / mem0 sections from current environment (not hardcoded OpenAI)."""
+    env_defaults = get_api_default_configuration()
+    merged = copy.deepcopy(config_value)
+
+    if "openmemory" not in merged:
+        merged["openmemory"] = copy.deepcopy(env_defaults["openmemory"])
+
+    if "mem0" not in merged or merged["mem0"] is None:
+        merged["mem0"] = copy.deepcopy(env_defaults["mem0"])
+    else:
+        m = merged["mem0"]
+        ed = env_defaults["mem0"]
+        for key in ("llm", "embedder", "vector_store"):
+            if key not in m or m[key] is None:
+                if ed.get(key) is not None:
+                    m[key] = copy.deepcopy(ed[key])
+    return merged
+
 
 def get_config_from_db(db: Session, key: str = "main"):
     """Get configuration from database."""
     config = db.query(ConfigModel).filter(ConfigModel.key == key).first()
-    
+
     if not config:
-        # Create default config with proper provider configurations
         default_config = get_default_configuration()
-        db_config = ConfigModel(key=key, value=default_config)
+        db_config = ConfigModel(key=key, value=copy.deepcopy(default_config))
         db.add(db_config)
         db.commit()
         db.refresh(db_config)
         return default_config
-    
-    # Ensure the config has all required sections with defaults
-    config_value = config.value
-    default_config = get_default_configuration()
-    
-    # Merge with defaults to ensure all required fields exist
-    if "openmemory" not in config_value:
-        config_value["openmemory"] = default_config["openmemory"]
-    
-    if "mem0" not in config_value:
-        config_value["mem0"] = default_config["mem0"]
-    else:
-        # Ensure LLM config exists with defaults
-        if "llm" not in config_value["mem0"] or config_value["mem0"]["llm"] is None:
-            config_value["mem0"]["llm"] = default_config["mem0"]["llm"]
-        
-        # Ensure embedder config exists with defaults
-        if "embedder" not in config_value["mem0"] or config_value["mem0"]["embedder"] is None:
-            config_value["mem0"]["embedder"] = default_config["mem0"]["embedder"]
-        
-        # Ensure vector_store config exists with defaults
-        if "vector_store" not in config_value["mem0"]:
-            config_value["mem0"]["vector_store"] = default_config["mem0"]["vector_store"]
 
-    # Save the updated config back to database if it was modified
-    if config_value != config.value:
-        config.value = config_value
+    raw = config.value
+    if not isinstance(raw, dict):
+        raw = {}
+    merged = _merge_config_with_env_defaults(raw)
+
+    if merged != config.value:
+        config.value = merged
         db.commit()
         db.refresh(config)
-    
-    return config_value
+
+    return merged
 
 def save_config_to_db(db: Session, config: Dict[str, Any], key: str = "main"):
     """Save configuration to database."""
@@ -140,21 +119,22 @@ async def get_configuration(db: Session = Depends(get_db)):
 
 @router.put("/", response_model=ConfigSchema)
 async def update_configuration(config: ConfigSchema, db: Session = Depends(get_db)):
-    """Update the configuration."""
+    """Replace or update the full configuration document."""
     current_config = get_config_from_db(db)
-    
-    # Convert to dict for processing
-    updated_config = current_config.copy()
-    
-    # Update openmemory settings if provided
+    updated_config = copy.deepcopy(current_config)
+
     if config.openmemory is not None:
         if "openmemory" not in updated_config:
             updated_config["openmemory"] = {}
         updated_config["openmemory"].update(config.openmemory.dict(exclude_none=True))
-    
-    # Update mem0 settings
-    updated_config["mem0"] = config.mem0.dict(exclude_none=True)
-    
+
+    if config.mem0 is not None:
+        updated_config["mem0"] = config.mem0.dict(exclude_none=True)
+
+    result = save_config_to_db(db, updated_config)
+    reset_memory_client()
+    return result
+
 
 @router.patch("/", response_model=ConfigSchema)
 async def patch_configuration(config_update: ConfigSchema, db: Session = Depends(get_db)):

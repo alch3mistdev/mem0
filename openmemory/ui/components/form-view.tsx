@@ -45,7 +45,7 @@ export function FormView({ settings, onChange }: FormViewProps) {
       mem0: {
         ...settings.mem0,
         llm: {
-          ...settings.mem0.llm,
+          ...(settings.mem0?.llm || {}),
           provider: value,
         },
       },
@@ -58,9 +58,9 @@ export function FormView({ settings, onChange }: FormViewProps) {
       mem0: {
         ...settings.mem0,
         llm: {
-          ...settings.mem0.llm,
+          ...(settings.mem0?.llm || {}),
           config: {
-            ...settings.mem0.llm.config,
+            ...(settings.mem0?.llm?.config || {}),
             [key]: value,
           },
         },
@@ -74,7 +74,7 @@ export function FormView({ settings, onChange }: FormViewProps) {
       mem0: {
         ...settings.mem0,
         embedder: {
-          ...settings.mem0.embedder,
+          ...(settings.mem0?.embedder || {}),
           provider: value,
         },
       },
@@ -87,9 +87,9 @@ export function FormView({ settings, onChange }: FormViewProps) {
       mem0: {
         ...settings.mem0,
         embedder: {
-          ...settings.mem0.embedder,
+          ...(settings.mem0?.embedder || {}),
           config: {
-            ...settings.mem0.embedder.config,
+            ...(settings.mem0?.embedder?.config || {}),
             [key]: value,
           },
         },

@@ -4,8 +4,9 @@ from uuid import uuid4
 from app.config import DEFAULT_APP_ID, USER_ID
 from app.database import Base, SessionLocal, engine
 from app.mcp_server import setup_mcp_server
-from app.models import App, User
+from app.models import App, Config as ConfigModel, User
 from app.routers import apps_router, backup_router, config_router, memories_router, stats_router
+from app.utils.memory import get_api_default_configuration
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_pagination import add_pagination
@@ -74,6 +75,21 @@ def create_default_app():
 # Create default user on startup
 create_default_user()
 create_default_app()
+
+
+def ensure_default_config_seeded():
+    """Persist env-aligned Mem0 defaults so UI and runtime match before any /config request."""
+    db = SessionLocal()
+    try:
+        existing = db.query(ConfigModel).filter(ConfigModel.key == "main").first()
+        if not existing:
+            db.add(ConfigModel(key="main", value=get_api_default_configuration()))
+            db.commit()
+    finally:
+        db.close()
+
+
+ensure_default_config_seeded()
 
 # Setup MCP server
 setup_mcp_server(app)

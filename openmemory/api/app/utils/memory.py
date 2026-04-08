@@ -27,6 +27,7 @@ Example configuration that will be automatically adjusted:
 }
 """
 
+import copy
 import hashlib
 import json
 import os
@@ -379,6 +380,37 @@ def get_default_memory_config():
             "config": embedder_config
         },
         "version": "v1.1"
+    }
+
+
+def get_api_default_configuration():
+    """
+    Full OpenMemory settings document for API/DB — same env-driven Mem0 defaults as
+    get_default_memory_config(), so the UI and runtime agree on first seed and reset.
+    """
+    mem = get_default_memory_config()
+    llm_block = {
+        "provider": mem["llm"]["provider"],
+        "config": copy.deepcopy(mem["llm"]["config"]),
+    }
+    emb_block = {
+        "provider": mem["embedder"]["provider"],
+        "config": copy.deepcopy(mem["embedder"]["config"]),
+    }
+    if llm_block["provider"] == "ollama":
+        llm_block = _fix_ollama_urls(llm_block)
+    if emb_block["provider"] == "ollama":
+        emb_block = _fix_ollama_urls(emb_block)
+    return {
+        "openmemory": {"custom_instructions": None},
+        "mem0": {
+            "llm": llm_block,
+            "embedder": emb_block,
+            "vector_store": {
+                "provider": mem["vector_store"]["provider"],
+                "config": copy.deepcopy(mem["vector_store"]["config"]),
+            },
+        },
     }
 
 

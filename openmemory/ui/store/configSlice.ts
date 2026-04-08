@@ -24,9 +24,15 @@ export interface EmbedderProvider {
   config: EmbedderConfig;
 }
 
+export interface VectorStoreConfig {
+  provider: string;
+  config: Record<string, unknown>;
+}
+
 export interface Mem0Config {
   llm?: LLMProvider;
   embedder?: EmbedderProvider;
+  vector_store?: VectorStoreConfig;
 }
 
 export interface OpenMemoryConfig {
@@ -44,25 +50,8 @@ const initialState: ConfigState = {
   openmemory: {
     custom_instructions: null,
   },
-  mem0: {
-    llm: {
-      provider: 'openai',
-      config: {
-        model: 'gpt-4o-mini',
-        temperature: 0.1,
-        max_tokens: 2000,
-        api_key: 'env:OPENAI_API_KEY',
-      },
-    },
-    embedder: {
-      provider: 'openai',
-      config: {
-        model: 'text-embedding-3-small',
-        api_key: 'env:OPENAI_API_KEY',
-      },
-    },
-  },
-  status: 'idle',
+  mem0: {},
+  status: 'loading',
   error: null,
 };
 
