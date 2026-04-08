@@ -131,6 +131,12 @@ def reset_memory_client():
     global _memory_client, _config_hash
     _memory_client = None
     _config_hash = None
+    try:
+        from app.utils.categorization import reset_categorization_llm
+
+        reset_categorization_llm()
+    except ImportError:
+        pass
 
 
 # --- LLM provider config factories ---
@@ -374,6 +380,69 @@ def get_default_memory_config():
         },
         "version": "v1.1"
     }
+
+
+def get_categorization_llm_config():
+    """
+    Build Mem0 LLM config for memory categorization (same provider machinery as main LLM).
+
+    Defaults follow ``LLM_*`` environment variables. Set
+    ``CATEGORIZATION_USE_EMBEDDER_CREDENTIALS=true`` to default provider/model/API keys from
+    ``EMBEDDER_*`` instead (only works when the embedder provider is also a valid LLM provider,
+    e.g. openai or ollama).
+
+    Override any field with ``CATEGORIZATION_PROVIDER``, ``CATEGORIZATION_MODEL``,
+    ``CATEGORIZATION_API_KEY``, ``CATEGORIZATION_BASE_URL``, or ``CATEGORIZATION_OLLAMA_BASE_URL``.
+    """
+    llm_provider_default = os.environ.get("LLM_PROVIDER", "openai").lower()
+    embedder_provider_default = os.environ.get(
+        "EMBEDDER_PROVIDER",
+        llm_provider_default if llm_provider_default == "ollama" else "openai",
+    ).lower()
+    use_embedder = os.environ.get("CATEGORIZATION_USE_EMBEDDER_CREDENTIALS", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+    if use_embedder:
+        provider = (os.environ.get("CATEGORIZATION_PROVIDER") or embedder_provider_default).lower()
+        model = os.environ.get("CATEGORIZATION_MODEL") or os.environ.get("EMBEDDER_MODEL")
+        api_key = os.environ.get("CATEGORIZATION_API_KEY") or os.environ.get("EMBEDDER_API_KEY")
+        base_url = os.environ.get("CATEGORIZATION_BASE_URL") or os.environ.get("EMBEDDER_BASE_URL")
+        ollama_base_url = (
+            os.environ.get("CATEGORIZATION_OLLAMA_BASE_URL")
+            or os.environ.get("OLLAMA_BASE_URL")
+            or base_url
+            or os.environ.get("LLM_BASE_URL")
+        )
+    else:
+        provider = (os.environ.get("CATEGORIZATION_PROVIDER") or llm_provider_default).lower()
+        model = os.environ.get("CATEGORIZATION_MODEL") or os.environ.get("LLM_MODEL")
+        api_key = os.environ.get("CATEGORIZATION_API_KEY") or os.environ.get("LLM_API_KEY")
+        base_url = os.environ.get("CATEGORIZATION_BASE_URL") or os.environ.get("LLM_BASE_URL")
+        ollama_base_url = os.environ.get("CATEGORIZATION_OLLAMA_BASE_URL") or os.environ.get(
+            "OLLAMA_BASE_URL"
+        )
+
+    cfg = _create_llm_config(
+        provider=provider,
+        model=model,
+        api_key=api_key,
+        base_url=base_url,
+        ollama_base_url=ollama_base_url,
+    )
+    cfg["temperature"] = 0.0
+    mt = cfg.get("max_tokens")
+    if mt is None or mt > 1024:
+        cfg["max_tokens"] = min(mt or 2000, 1024)
+
+    wrapped = {"provider": provider, "config": cfg}
+    if provider == "ollama":
+        wrapped = _fix_ollama_urls(wrapped)
+
+    parsed_cfg = _parse_environment_variables(wrapped["config"])
+    return {"provider": provider, "config": parsed_cfg}
 
 
 def _parse_environment_variables(config_dict):

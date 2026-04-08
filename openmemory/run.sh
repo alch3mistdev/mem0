@@ -9,10 +9,15 @@ OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 USER="${USER:-$(whoami)}"
 NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8765}"
 
-if [ -z "$OPENAI_API_KEY" ]; then
-  echo "❌ OPENAI_API_KEY not set. Please run with: curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | OPENAI_API_KEY=your_api_key bash"
-  echo "❌ OPENAI_API_KEY not set. You can also set it as global environment variable: export OPENAI_API_KEY=your_api_key"
-  exit 1
+# Mem0 needs credentials for the LLM/embedder stack. OpenAI is the default; use LLM_PROVIDER=ollama for local Ollama
+# or set LLM_API_KEY / provider-specific keys for other hosts.
+if [ -z "${OPENAI_API_KEY:-}" ] && [ -z "${LLM_API_KEY:-}" ]; then
+  if [ "${LLM_PROVIDER:-openai}" != "ollama" ]; then
+    echo "❌ No API key found. For OpenAI (default), set OPENAI_API_KEY or LLM_API_KEY."
+    echo "   For local Ollama: export LLM_PROVIDER=ollama (and typically EMBEDDER_PROVIDER=ollama)."
+    echo "   Example: curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | OPENAI_API_KEY=your_api_key bash"
+    exit 1
+  fi
 fi
 
 # Check if Docker is installed
@@ -107,8 +112,16 @@ create_compose_file() {
   openmemory-mcp:
     image: mem0/openmemory-mcp:latest
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - USER=${USER}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_MODEL=${LLM_MODEL:-}
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-}
+      - EMBEDDER_PROVIDER=${EMBEDDER_PROVIDER:-}
+      - EMBEDDER_MODEL=${EMBEDDER_MODEL:-}
+      - EMBEDDER_API_KEY=${EMBEDDER_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
 EOF
 
   # Add vector store specific environment variables

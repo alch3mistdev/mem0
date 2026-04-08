@@ -16,7 +16,7 @@ make build
 make env
 ```
 
-Once you run this command, edit the file `api/.env` and enter the `OPENAI_API_KEY`.
+Once you run this command, edit the file `api/.env` and set credentials for your stack (for example `OPENAI_API_KEY` for the default OpenAI LLM/embedder, or `LLM_PROVIDER=ollama` with Ollama URLs for a local setup). Memory categorization uses the same Mem0 LLM settings as `LLM_*` unless you set optional `CATEGORIZATION_*` variables — see the root `openmemory/README.md`.
 
 3. Start the services:
 ```bash

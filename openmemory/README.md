@@ -8,7 +8,7 @@ OpenMemory is your personal memory layer for LLMs - private, portable, and open-
 
 ### Prerequisites
 - Docker
-- OpenAI API Key
+- LLM credentials: **OpenAI API key** (default stack), **or** a working **Ollama** install with `LLM_PROVIDER=ollama`, **or** another Mem0-supported LLM provider with the appropriate API keys
 
 You can quickly run OpenMemory by running the following command:
 
@@ -16,13 +16,11 @@ You can quickly run OpenMemory by running the following command:
 curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | bash
 ```
 
-You should set the `OPENAI_API_KEY` as a global environment variable:
+For the default OpenAI-based stack, set `OPENAI_API_KEY` (globally or when piping `run.sh`). For fully local Ollama, set `LLM_PROVIDER=ollama` and typically `EMBEDDER_PROVIDER=ollama` instead of an OpenAI key.
 
 ```bash
 export OPENAI_API_KEY=your_api_key
 ```
-
-You can also set the `OPENAI_API_KEY` as a parameter to the script:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | OPENAI_API_KEY=your_api_key bash
@@ -33,7 +31,7 @@ curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | 
 - Docker and Docker Compose
 - Python 3.9+ (for backend development)
 - Node.js (for frontend development)
-- OpenAI API Key (required for LLM interactions, run `cp api/.env.example api/.env` then change **OPENAI_API_KEY** to yours)
+- API keys for your chosen LLM/embedder (default: OpenAI; run `cp api/.env.example api/.env` and set variables for your provider)
 
 ## Quickstart
 
@@ -84,6 +82,19 @@ By default, OpenMemory uses OpenAI (`gpt-4o-mini`) for the LLM and embedder. You
 | `EMBEDDER_MODEL` | Model name for the embedder | `text-embedding-3-small` (OpenAI) / `nomic-embed-text` (Ollama) |
 | `EMBEDDER_API_KEY` | API key for the embedder provider | `OPENAI_API_KEY` env var |
 | `EMBEDDER_BASE_URL` | Custom base URL for the embedder API | Provider default |
+
+#### Memory categorization (optional overrides)
+
+Automatic category labels use the same Mem0 LLM stack as `LLM_*` by default. Override or point categorization at embedder credentials when those match an LLM provider (e.g. both Ollama).
+
+| Variable | Description | Default |
+|---|---|---|
+| `CATEGORIZATION_PROVIDER` | LLM provider for categorization | Same as `LLM_PROVIDER` |
+| `CATEGORIZATION_MODEL` | Model name for categorization | Same as `LLM_MODEL` (or provider default) |
+| `CATEGORIZATION_API_KEY` | API key for categorization | Same as `LLM_API_KEY` |
+| `CATEGORIZATION_BASE_URL` | Base URL for categorization | Same as `LLM_BASE_URL` |
+| `CATEGORIZATION_OLLAMA_BASE_URL` | Ollama URL for categorization | Same as `OLLAMA_BASE_URL` |
+| `CATEGORIZATION_USE_EMBEDDER_CREDENTIALS` | If `true`, default provider/model/keys from `EMBEDDER_*` instead of `LLM_*` | `false` |
 
 **Example: Using Ollama (fully local)**
 ```env
