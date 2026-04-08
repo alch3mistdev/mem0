@@ -103,7 +103,12 @@ LLM_MODEL=llama3.1:latest
 EMBEDDER_PROVIDER=ollama
 EMBEDDER_MODEL=nomic-embed-text
 OLLAMA_BASE_URL=http://localhost:11434
+# Optional: run categorization on Ollama with a smaller/faster model than the main LLM
+CATEGORIZATION_PROVIDER=ollama
+CATEGORIZATION_MODEL=llama3.2:3b
 ```
+
+Categorization only needs a short JSON label list, so you do **not** have to use the same model as `LLM_MODEL`. If your main model is large or slow (for example 70B-class), prefer a small instruct model such as **`llama3.2:3b`** for categorization: it is quick to load, cheap to run, and sufficient for structured tags. If your main LLM is already small (for example `llama3.1:latest` at 8B), matching `CATEGORIZATION_MODEL` to `LLM_MODEL` is fine; setting `llama3.2:3b` anyway can still reduce latency when both models stay warm. Omit the `CATEGORIZATION_*` lines to inherit the defaults (same provider and model as `LLM_*`).
 
 **Example: Using Anthropic**
 ```env
