@@ -4,9 +4,9 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - mem0_storage:/mem0/storage
+      - qdrant_data:/mem0/storage
   openmemory-mcp:
-    image: mem0/openmemory-mcp
+    image: openmemory-mcp:9pve
     build: api/
     environment:
       - USER
@@ -25,12 +25,12 @@ services:
     build:
       context: ui/
       dockerfile: Dockerfile
-    image: mem0/openmemory-ui:latest
+    image: openmemory-ui:9pve
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-      - NEXT_PUBLIC_USER_ID=${USER}
+      - NEXT_PUBLIC_API_URL=https://mem0.9pve.com
+      - NEXT_PUBLIC_USER_ID=root
 
 volumes:
-  mem0_storage:
+  qdrant_data:
